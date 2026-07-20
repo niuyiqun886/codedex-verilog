@@ -1,0 +1,7 @@
+work/
+transcript
+*.wlf
+*.vcd
+vsim.wlf
+modelsim.ini
+.obsidian/
