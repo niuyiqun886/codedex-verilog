@@ -48,7 +48,21 @@ endmdule
 **异或非：**
 按位异或"^"，不存在逻辑异或。
 
-**声明wires**
+**声明wires：**
+
+`声明了一个名为`w`的 8 位向量` 
+格式：
+
+```
+
+```verilog
+wire [7:0] w;         // 8-bit wire
+reg  [4:1] x;         // 4-bit reg
+output reg [0:0] y;   // 1-bit reg that is also an output port (this is still a vector)
+input wire [3:-2] z;  // 6-bit wire input (negative ranges are allowed)
+output [3:0] a;       // 4-bit output wire. Type is 'wire' unless specified otherwise.
+wire [0:7] b;         // 8-bit wire where b[0] is the most-significant bit.
+```
 
 这个语句需要在输入输出的外面
 
@@ -65,3 +79,40 @@ module top_module(
 
 endmodule
 ```
+
+
+
+举例：
+
+b放高位，a放低位：
+
+![](assets/49dc34a5-1b19-48f5-8fac-ea6d3a5c334c.png)
+
+
+```verilog
+module top_module( 
+    input [2:0] a,
+    input [2:0] b,
+    output [2:0] out_or_bitwise,
+    output out_or_logical,
+    output [5:0] out_not
+);
+    assign out_or_bitwise[2:0] = a[2:0] | b[2:0];
+    assign out_or_logical = a[2:0] || b[2:0];
+    assign out_not[5:3] = ~ b[2:0],
+    assign out_not[2:0] = ~ a[2:0];
+
+endmodule
+```
+
+可以简化：位宽已经对应了，可以改为 a|b；a||b这样子。
+
+
+
+
+
+
+
+
+
+
