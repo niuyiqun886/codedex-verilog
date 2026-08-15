@@ -45,7 +45,7 @@ endmdule
 1. 按位或非 ~ |（bitwise NOR）  
 2. 逻辑或非 ！ ||（logical NOR）
 
-**异或非：**
+**异或：**
 按位异或"^"，不存在逻辑异或。
 
 **声明wires：**
@@ -82,7 +82,7 @@ endmodule
 
 
 
-举例：
+举例：题目链接：[矢量门](https://hdlbits.01xz.net/wiki/Vectorgates)
 
 b放高位，a放低位：
 
@@ -140,7 +140,7 @@ endmodule
 
 
 
-
+题目链接：[模块](https://hdlbits.01xz.net/wiki/Module)
 
 ![](assets/841be368-938d-458a-82ab-ce3f6b80a635.png)
 
@@ -172,6 +172,7 @@ endmodule
 ```
 
 
+题目链接：[按名称连接端口](https://hdlbits.01xz.net/wiki/Module_name)
 举例：只有位置信息，并没给端口的名字。
 
 ![](assets/2cfcb7f5-f8e1-41fa-a3ea-edc203fa832a.png)
@@ -218,6 +219,8 @@ endmodule
 
 
 
+
+题目链接：[三个模块](https://hdlbits.01xz.net/wiki/Module_shift)
 内部模块连接的写法：
 
 ![](assets/db8db3af-b089-4a70-910d-d39c36f71bbf.png)
@@ -230,6 +233,145 @@ module top_module ( input clk, input d, output q );
     my_dff inst2(.clk(clk), .d(out1), .q(out2));
     my_dff inst3(.clk(clk), .d(out2), .q(q));
     
+    //也可以这么写，直接按顺序
+	//wire a, b;
+	//my_dff d1 ( clk, d, a );
+	//my_dff d2 ( clk, a, b );
+	//my_dff d3 ( clk, b, q );
 endmodule
 ```
+
+
+
+
+
+
+题目链接：[模块和向量](https://hdlbits.01xz.net/wiki/Module_shift8)
+
+数据选择器的写法：使用always @( * )  begin
+
+```verilog
+module top_module ( 
+    input clk, 
+    input [7:0] d, 
+    input [1:0] sel, 
+    output [7:0] q 
+);
+    wire [7:0] a;
+    wire [7:0] b;
+    wire [7:0] c;
+    my_dff8 inst1(clk, d[7:0], a[7:0]);
+    my_dff8 inst2(clk, a[7:0], b[7:0]);
+    my_dff8 inst3(clk, b[7:0], c[7:0]);
+    
+    always @(*) 
+    begin
+        case (sel)
+            2'b00: q[7:0] = d[7:0];
+            2'b01: q[7:0] = a[7:0];            
+            2'b10: q[7:0] = b[7:0];
+            2'b11: q[7:0] = c[7:0];
+        endcase
+    end
+endmodule
+
+```
+
+也可以简化：位数已经对齐了，就不用写了。
+
+```verilog
+module top_module (
+    input clk,
+    input [7:0] d,
+    input [1:0] sel,
+    output reg [7:0] q      // 注意加 reg
+);
+    wire [7:0] a, b, c;
+    my_dff8 inst1(clk, d, a);
+    my_dff8 inst2(clk, a, b);
+    my_dff8 inst3(clk, b, c);
+
+    always @(*) 
+    begin
+        case (sel)
+            2'b00: q = d;   // 延迟 0 拍
+            2'b01: q = a;   // 延迟 1 拍
+            2'b10: q = b;   // 延迟 2 拍
+            2'b11: q = c;   // 延迟 3 拍
+        endcase
+    end
+endmodule
+```
+
+
+
+题目链接： [加法器](https://hdlbits.01xz.net/wiki/Module_fadd)
+已经给了一个：(这里有加法器的写法) 
+module add16 ( input[15:0] **a**, input[15:0] **b**, input **cin**, output[15:0] **sum**, output **cout** );
+需要写add1和add16.
+
+![](assets/916f4f6d-de2d-41af-b2e4-df146835f3a0.png)
+
+
+```verilog
+module top_module (
+    input [31:0] a,
+    input [31:0] b,
+    output [31:0] sum
+);//
+	wire x;
+    add16 inst1(a[15:0], b[15:0], 0, sum[15:0], x);
+    add16 inst2(a[31:16], b[31:16], x, sum[31:16]);
+    
+endmodule
+
+module add1 ( input a, input b, input cin,   output sum, output cout );
+
+// Full adder module here  加法器的写法
+	assign sum = a ^ b ^ cin;
+	assign cout = a&b | a&cin | b&cin;
+endmodule
+```
+
+
+
+[Module addsub](https://hdlbits.01xz.net/wiki/Module_addsub)
+
+![](assets/aa913d92-5763-4b97-97be-5eb3e5bbc4e8.png)
+
+异或也可以这么写：
+
+![](assets/bc769cd3-21dc-4111-b657-b25c68d13f5b.png)
+
+
+```verilog
+module top_module(
+    input [31:0] a,
+    input [31:0] b,
+    input sub,
+    output [31:0] sum
+);
+    wire x;
+    //wire [31:0] sub_b_out; 
+    //assign sub_b_out[31:0] = {32{sub}} ^ b[31:0];
+    
+    reg [31:0] sub_b_out;
+	always @(*) begin
+    	case (sub)
+        	1'b0: sub_b_out = b;
+        	1'b1: sub_b_out = ~b;
+    	endcase
+	end
+    
+    add16 inst1(a[15:0], sub_b_out[15:0], sub, sum[15:0], x);
+    add16 inst2(a[31:16], sub_b_out[31:16], x, sum[31:16]);
+    
+endmodule
+
+```
+
+>[!question] 
+>1.异或门的写法，可以是用'^'，也可以是用一个数据选择器。
+>2.`sub` 是 1 位，`b` 是 32 位。Verilog 在做 `sub ^ b[31:0]` 时会把 `sub` **零扩展**成 32 位（变成 `{31'b0, sub}`），结果只有最低位被取反，高 31 位原样通过。所以减法时只翻转了 b[0]，完全不对。
+
 
