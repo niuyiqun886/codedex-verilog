@@ -99,7 +99,7 @@ module top_module(
 );
     assign out_or_bitwise[2:0] = a[2:0] | b[2:0];
     assign out_or_logical = a[2:0] || b[2:0];
-    assign out_not[5:3] = ~ b[2:0],
+    assign out_not[5:3] = ~ b[2:0];
     assign out_not[2:0] = ~ a[2:0];
 
 endmodule
@@ -187,8 +187,7 @@ module top_module (
     output out1,
     output out2
 );
-    //mod_a instant1(.out({out1,out2}), .in({a,b,c,d}));
-    //mod_a inst1(.out(out1), .out(out2), .in(a), .in(b), .in(c), .in(d));
+    //mod_a inst1(.out(out1), .out(out2), .in(a), .in(b), .in(c), .in(d));不对
     mod_a instant1 ( out1, out2, a, b, c, d );
 endmodule
 ```
@@ -213,6 +212,7 @@ module top_module (
     output out2
 );
     mod_a inst1(.in1(a), .in2(b), .in3(c), .in4(d), .out1(out1), .out2(out2));
+    //mod_a inst(out1, out2, a, b, c, d);
 endmodule
 
 ```
@@ -334,6 +334,9 @@ endmodule
 ```
 
 
+>[!add] 加法器
+>如果以后写verilog的话可以将一些小东西写成固定的模块。比如说加法器。
+
 
 [Module addsub](https://hdlbits.01xz.net/wiki/Module_addsub)
 
@@ -375,3 +378,36 @@ endmodule
 >2.`sub` 是 1 位，`b` 是 32 位。Verilog 在做 `sub ^ b[31:0]` 时会把 `sub` **零扩展**成 32 位（变成 `{31'b0, sub}`），结果只有最低位被取反，高 31 位原样通过。所以减法时只翻转了 b[0]，完全不对。
 
 
+>[!important] reg和wire
+>关于 wire 和 reg 的说明：赋值语句的左侧必须是_网络_类型（例如wire），而过程赋值（在 always 块中）的左侧必须是_变量_类型（例如reg）。这些类型（wire 和 reg）与所综合的硬件无关，只是 Verilog 作为硬件_仿真_语言时遗留下来的语法。
+> * always 的左侧必须是reg类型；
+> * assign 的左侧必须是wire类型
+
+
+题目链接：[alwaysblock](https://hdlbits.01xz.net/wiki/Alwaysblock2)
+
+* 连续赋值语句：(assign x = y) 只能在非非过程内部使用，不能在always中使用
+* 过程块阻塞赋值语句：(x = y) 只能在过程内部使用，always
+* 过程式非阻塞赋值： (x <= y) 只能在过程内部使用
+
+在**组合逻辑的**always 块中，使用**阻塞**赋值。在**时钟控制的**always 块中，使用**非阻塞**赋值。
+
+![447](assets/34942f3a-1d2b-4463-bb71-736795c2f148.png)
+
+
+```verilog
+// synthesis verilog_input_version verilog_2001
+module top_module(
+    input clk,
+    input a,
+    input b,
+    output wire out_assign,
+    output reg out_always_comb,
+    output reg out_always_ff   );
+
+    assign out_assign = a ^ b;
+    always @(*) out_always_comb = a ^ b;
+    always @(posedge clk) out_always_ff = a ^ b;
+    
+endmodule
+```
