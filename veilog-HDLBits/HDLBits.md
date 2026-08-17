@@ -390,6 +390,14 @@ endmodule
 * 过程块阻塞赋值语句：(x = y) 只能在过程内部使用，always
 * 过程式非阻塞赋值： (x <= y) 只能在过程内部使用
 
+阻塞和非阻塞的区别：
+- 阻塞 `c = a+b`：这条语句当场把 `c` 写完，后面的语句被迫等它写完才执行 → 后面看到新 `c`
+- 非阻塞 `c <= a+b`：右边 `a+b` 当场算完，但写 `c` 被推到时间步末尾，后面的语句不等它 → 后面看到旧 `c`
+举例：
+`c = a + b` or `c <= a + b` 的运算是完全相同的，因为它们都是在时钟上升沿瞬间 "保存输入初始值 (上升沿之前的值)"，然后进行运算 `a + b` 并赋值给 `c`。这里阻塞和非阻塞的区别体现在第二句 `e = c + d` or `e <= c + d` 上：
+- 时序 + 非阻塞：等号右端所有用到的值，也即 `a, b, c, d` 都是上升沿时保存下来的初始值 (保存的是上升沿前一瞬间的值)，本次 `c + d` 运算 "看不到" `c <= a + b` 的新结果值；换句话说，本次 `c + d` 运算使用的是上次 `c <= a + b` 计算得到的值。 **等价于 `e_{n} = a_{n-1} + b_{n-1} + d_{n}` 的效果。**
+- 时序 + 阻塞：时钟上升沿到来时，仅保存整个模块几个输入端口的初始值，也即 `a, b, d` 在上升沿被保存下来。语句 `e = c + d` 会先等待 `c` 完成更新，被赋值为 `a + b` 的新结果，然后才来计算 `c + d` 并赋值给 `e`，所以本次 `c + d` 运算 "看到了" 本次 `c = a + b` 的新结果值。 **等价于 `e = (a + b) + d`，也即 `e_{n} = a_{n} + b_{n} + d_{n}` 的效果。**
+
 在**组合逻辑的**always 块中，使用**阻塞**赋值。在**时钟控制的**always 块中，使用**非阻塞**赋值。
 
 ![447](assets/34942f3a-1d2b-4463-bb71-736795c2f148.png)
@@ -411,3 +419,102 @@ module top_module(
     
 endmodule
 ```
+
+
+题目链接：[always if](https://hdlbits.01xz.net/wiki/Always_if)
+
+![](assets/f7ca5ba6-ed36-4a66-9f57-7a0eda56178e.png)
+
+![](assets/0a5e0bbe-5d2e-4253-92e6-b14c38907293.png)
+
+
+```verilog
+// synthesis verilog_input_version verilog_2001
+module top_module(
+    input a,
+    input b,
+    input sel_b1,
+    input sel_b2,
+    output wire out_assign,
+    output reg out_always   ); 
+
+    always @(*) begin
+        if (sel_b1 && sel_b2) begin
+            out_always = b;
+        end
+        else begin
+            out_always = a;
+        end
+    end
+    
+    assign out_assign = (sel_b1 && sel_b2) ? b:a;
+    
+    
+endmodule
+```
+
+>[!error] 
+>问题是你把**赋值 `=`** 当成了**比较 `==`**。
+
+verilog
+```verilog
+if ({sel_b1,sel_b2} = 2'b11)   // ✗ 这是赋值语句，不是表达式
+if ({sel_b1,sel_b2} == 2'b11)  // ✓ 相等比较
+```
+
+Verilog 里 `=` 只能作为独立的赋值语句出现，不能嵌在 `if` 的条件表达式里（不像 C 那样允许 `if (x = 1)`）。所以编译器看到括号里出现 `=` 就报语法错误。
+
+>[!note] 
+>**条件表达式判断的是"真/假"，不是"等于某个值"**。
+>规则是：表达式的值只要非零就算真，为零就算假。`sel_b1` 是 1 位信号，只可能是 0 或 1，所以：
+>- 写 `if (sel_b1)`，等价于 `if (sel_b1 == 1'b1)`
+>- 写 `if (!sel_b1)`，等价于 `if (sel_b1 == 1'b0)`
+>
+所以 `sel_b1 && sel_b2` 读作"sel_b1 为真 **并且** sel_b2 为真"，对 1 位信号来说就是"两个都是 1"。多写一个 `== 1` 不算错，但属于冗余，就像中文里说"这个开关是打开的"而不用说"这个开关的状态等于打开"。
+说它比 `{sel_b1,sel_b2} == 2'b11` 直观，是因为后者要先在脑子里做两步转换：把两个信号拼成一个 2 位数 → 再对照这个 2 位数是不是二进制 11。而 `&&` 直接对应题目那句话"Choose b if both sel_b1 and sel_b2 are true"，几乎是逐词翻译。
+补充一个坑：对**多位**信号就不能省略了。比如 `data` 是 8 位，`if (data)` 的意思是"data 不等于 0"（任何一位为 1 都算真），而不是"data 等于 1"。这时候想比较具体数值就必须写 `if (data == 8'd1)`。只有 1 位信号才能安全地省略。
+
+
+题目链接：[Alwaysif2](https://hdlbits.01xz.net/wiki/Always_if2)
+
+锁存器（latch）的意外产生:
+
+问题出在哪:看第一段代码：
+
+```verilog
+always @(*) begin
+    if (cpu_overheated)
+        shut_off_computer = 1;
+end
+```
+
+你只说了"CPU 过热时，关机信号 = 1"。但没说 CPU 不过热时该等于几。
+Verilog 遇到这种情况的处理规则是：没被赋值的情况，输出保持原来的值不变。
+
+"保持不变"意味着电路必须记住上一次的值。而纯组合逻辑（与门、或门这些）是没有记忆能力的，所以综合工具只能给你插一个锁存器来存住这个值。这就是 Quartus 报的 `Warning (10240): inferring latch(es)`。
+
+后果很荒谬：一旦 `cpu_overheated` 曾经为 1，`shut_off_computer` 就永远卡在 1 了，哪怕 CPU 早就凉下来——电脑再也开不了机。这显然不是你想要的电路。
+
+核心规则
+组合逻辑必须在所有条件下都给输出赋值。
+实践上就是：`if` 一定要配 `else`，或者在 always 块开头先给个默认值。
+
+改法:
+
+```verilog
+always @(*) begin
+    if (cpu_overheated)
+        shut_off_computer = 1;
+    else
+        shut_off_computer = 0;    // 补上 else
+end
+
+always @(*) begin
+    if (~arrived)
+        keep_driving = ~gas_tank_empty;
+    else
+        keep_driving = 0;         // 补上 else
+end
+```
+
+第二个的语义是：没到目的地就继续开（前提是油箱不空），到了就停车。
