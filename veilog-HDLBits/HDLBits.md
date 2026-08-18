@@ -518,3 +518,160 @@ end
 ```
 
 第二个的语义是：没到目的地就继续开（前提是油箱不空），到了就停车。
+
+
+
+
+题目连接：[Always case](https://hdlbits.01xz.net/wiki/Always_case)
+
+case语句的使用：
+因此，在本练习中，创建一个 6 对 1 多路复用器。当sel 的值在 0 到 5 之间时，选择对应的数据输入；否则，输出 0。所有数据输入和输出均为 4 位宽。
+
+```verilog
+// synthesis verilog_input_version verilog_2001
+module top_module ( 
+    input [2:0] sel, 
+    input [3:0] data0,
+    input [3:0] data1,
+    input [3:0] data2,
+    input [3:0] data3,
+    input [3:0] data4,
+    input [3:0] data5,
+    output reg [3:0] out   );//
+
+    always @(*) begin
+        case (sel)
+            3'b000:    begin out = data0;    end
+            3'b001:    begin out = data1;    end
+            3'b010:    begin out = data2;    end
+            3'b011:    begin out = data3;    end
+            3'b100:    begin out = data4;    end
+            3'b101:    begin out = data5;    end
+            default: begin out = 4'd0;     end
+        endcase
+    end
+
+endmodule
+```
+
+
+
+题目链接：[Always case2](https://hdlbits.01xz.net/wiki/Always_case2)
+
+_**优先级编码器**_是一种组合电路，当输入一个位向量时，它会输出向量中第一个为1 的位的位置。例如，一个 8 位优先级编码器，输入为8'b100 1 0000，则输出3'd4，因为 bit[4] 是第一个为高电平的位。
+
+题目：构建一个 4 位优先级编码器。对于这个问题，如果所有输入位都不是高电平（即输入为零），则输出零。注意，一个 4 位二进制数有 16 种可能的组合。
+
+```verilog
+// synthesis verilog_input_version verilog_2001
+module top_module (
+    input [3:0] in,
+    output reg [1:0] pos  );
+
+    always @(*) begin
+        case (in)
+            4'b0001: begin	pos = 2'd0;	end
+            4'b0010: begin	pos = 2'd1;	end
+            4'b0011: begin	pos = 2'd0;	end
+            4'b0100: begin	pos = 2'd2;	end
+            4'b0101: begin	pos = 2'd0;	end
+            4'b0110: begin	pos = 2'd1;	end
+            4'b0111: begin	pos = 2'd0;	end
+            4'b1000: begin	pos = 2'd3;	end  
+            4'b1001: begin	pos = 2'd0;	end
+            4'b1010: begin	pos = 2'd1;	end
+            4'b1011: begin	pos = 2'd0;	end
+            4'b1100: begin	pos = 2'd2;	end
+            4'b1101: begin	pos = 2'd0;	end
+            4'b1110: begin	pos = 2'd1;	end
+            4'b1111: begin	pos = 2'd0;	end
+            default: pos = 2'd0;
+        endcase
+    end
+endmodule
+```
+
+
+题目链接：[Always casez](https://hdlbits.01xz.net/wiki/Always_casez)
+上面的那个练习，发现如果是8位的话就会有256个情况；所以引入了casez这个语句。
+
+从之前的练习（[always_case2）](https://hdlbits.01xz.net/wiki/always_case2 "always_case2")这样，case语句中就会有256个case。如果case语句中的case项支持无关位，我们可以将case项数量减少到9个。这就是case **z**的作用：它将值为z的位视为比较中的无关位。
+
+```verilog
+// synthesis verilog_input_version verilog_2001
+module top_module (
+    input [7:0] in,
+    output reg [2:0] pos );
+
+//    always @(*) begin
+//        casez(in)
+//            8'bzzzz_zzz1: begin	pos = 3'd0;	end
+//            8'bzzzz_zz1z: begin	pos = 3'd1;	end
+//            8'bzzzz_z1zz: begin	pos = 3'd2;	end
+//            8'bzzzz_1zzz: begin	pos = 3'd3;	end            
+//            8'bzzz1_zzzz: begin	pos = 3'd4;	end
+//            8'bzz1z_zzzz: begin	pos = 3'd5;	end            
+//            8'bz1zz_zzzz: begin	pos = 3'd6;	end
+//            8'b1zzz_zzzz: begin	pos = 3'd7;	end            
+//            default: begin pos = 3'd0; end
+//        endcase
+//    end
+    
+    always @(*) begin
+        casez(in)
+            8'b????_???1: begin	pos = 3'd0;	end
+            8'b????_??10: begin	pos = 3'd1;	end
+            8'b????_?100: begin	pos = 3'd2;	end
+            8'b????_1000: begin	pos = 3'd3;	end            
+            8'b???1_0000: begin	pos = 3'd4;	end
+            8'b??10_0000: begin	pos = 3'd5;	end            
+            8'b?100_0000: begin	pos = 3'd6;	end
+            8'b1000_0000: begin	pos = 3'd7;	end            
+            default: begin pos = 3'd0; end
+        endcase
+    end
+endmodule
+```
+
+用 `?` 代替 `z` 可读性更好，一眼能看出是通配符而不是高阻态。
+另外页面最后提到的那个建议写成互斥的形式，比如 `8'b??????10`、`8'b?????100`，这样每个输入只能匹配唯一一项，即使分支顺序被人调换了行为也不变，不依赖"第一个匹配生效"这个隐式规则。你现在的写法是正确的，但依赖顺序，改动时容易出错。
+
+
+
+题目链接：[Always nolatches](https://hdlbits.01xz.net/wiki/Always_nolatches)
+
+假设你正在构建一个电路，用于处理来自 PS/2 键盘的扫描码，以便进行游戏。根据接收到的扫描码的最后两个字节，你需要判断键盘上的某个方向键是否被按下。这涉及到一个相当简单的映射，可以用一个包含四个分支的 case 语句（或 if-elseif 语句）来实现。
+
+| 扫描码 [15:0] | 箭头键  |
+| ---------- | ---- |
+| 16'he06b   | 左箭头  |
+| 16'he072   | 向下箭头 |
+| 16'he074   | 右箭头  |
+| 16'he075   | 向上箭头 |
+| 还要别的吗      | 没有任何 |
+![](assets/35a0b5ee-7bb0-4074-b5fd-83cb33902425.png)
+
+
+```verilog
+// synthesis verilog_input_version verilog_2001
+module top_module (
+    input [15:0] scancode,
+    output reg left,
+    output reg down,
+    output reg right,
+    output reg up  ); 
+
+    always @(*) begin
+        up = 1'b0; down = 1'b0; left = 1'b0; right = 1'b0;
+        case(scancode)
+            16'he06b:	begin	left = 1'b1;	end
+            16'he072:	begin	down = 1'b1;	end
+            16'he074:	begin	right = 1'b1;	end
+            16'he075:	begin	up = 1'b1;		end
+        endcase
+    end
+endmodule
+
+```
+
+就是使用case语句前现将你的输出都赋值了一个默认的，然后这样的话跑case的时候没出现情况就会使用默认值，不需要使用default了。
