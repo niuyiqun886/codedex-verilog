@@ -675,3 +675,57 @@ endmodule
 ```
 
 就是使用case语句前现将你的输出都赋值了一个默认的，然后这样的话跑case的时候没出现情况就会使用默认值，不需要使用default了。
+
+
+题目链接：[Conditional](https://hdlbits.01xz.net/wiki/Conditional)
+三目运算符的读法是：条件 ? 条件为真时取这个 : 条件为假时取这个
+
+```verilog
+(0 ? 3 : 5)
+ ↑   ↑   ↑
+条件 真值 假值
+```
+
+练习：比较大小，创建一个四项最小值电路。
+
+![](assets/e6796d11-602c-4422-b206-317abf518a6f.png)
+
+```verilog
+module top_module (
+    input [7:0] a, b, c, d,
+    output [7:0] min);//
+
+    wire [7:0] x, y;
+    // assign intermediate_result1 = compare? true: false;
+    assign x = (a > b) ? b : a;
+    assign y = (c > d) ? d : c;
+    assign min = (x > y) ? y : x;
+    
+endmodule
+```
+
+
+题目链接：[Reduction](https://hdlbits.01xz.net/wiki/Reduction)
+归约运算符：
+
+![](assets/5542a6a4-7be8-4239-93ad-c5fe24b1f4e0.png)
+
+奇偶校验：使用异或操作。
+
+![](assets/63c044bc-f37f-474e-8843-7e4d48044e51.png)
+
+```verilog
+module top_module (
+    input [7:0] in,
+    output parity); 
+    assign parity = ^in[7:0];     //偶校验
+    //assign parity = ~^ in[7:0];  //奇校验
+endmodule
+```
+
+**奇偶校验是干什么的**：
+	数据在传输过程中可能出错（某一位从 0 变成 1 或反过来）。校验位就是发送方额外附加的一位，让接收方能发现"数据被改过"。
+
+**偶校验（even parity）的规则**：让"数据位 + 校验位"这 9 位里 **1 的个数总是偶数**。
+	1.举例，发送 8 位数据 `10110000`，里面有 3 个 1（奇数个）。为了凑成偶数，校验位取 1，发出去的 9 位是 `1 10110000`，总共 4 个 1 ✓。
+	2.再比如数据 `11000011`，有 4 个 1（已经是偶数），校验位就取 0。
