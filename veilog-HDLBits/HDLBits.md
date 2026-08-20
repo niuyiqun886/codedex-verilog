@@ -729,3 +729,64 @@ endmodule
 **偶校验（even parity）的规则**：让"数据位 + 校验位"这 9 位里 **1 的个数总是偶数**。
 	1.举例，发送 8 位数据 `10110000`，里面有 3 个 1（奇数个）。为了凑成偶数，校验位取 1，发出去的 9 位是 `1 10110000`，总共 4 个 1 ✓。
 	2.再比如数据 `11000011`，有 4 个 1（已经是偶数），校验位就取 0。
+
+
+
+题目链接：[Vector100r](https://hdlbits.01xz.net/wiki/Vector100r)
+
+题：给一个100bit 的输入矩阵[99:0]，翻转每个bit的顺序。
+使用for循环，i需要是整数。
+
+```verilog
+module top_module( 
+    input [99:0] in,
+    output [99:0] out
+);
+	integer i;
+    always @(*) begin
+        //for (i = 0;i <100;i = i + 1) begin
+        for (i = 0; i < $bits(out); i++) begin
+        out[i] = in[99-i];
+        end
+    end
+    
+endmodule
+```
+
+
+题目链接：[Popcount255](https://hdlbits.01xz.net/wiki/Popcount255)
+
+计算255位里面的1的个数
+
+```verilog
+module top_module( 
+    input [254:0] in,
+    output [7:0] out );
+	
+    integer i;
+
+    always @(*) begin
+        out[7:0] = 8'b0;
+        for (i = 0; i < 255; i = i + 1) begin
+            if (in[i])
+        	out = out + 1'b1;
+        end
+    end
+    
+    更简单写法
+    always @(*) begin
+	    out = 8'd0;
+	    for (i = 0; i < 255; i = i + 1)
+	        out = out + in[i];
+	end
+endmodule
+```
+
+>[!error] 我犯的错误
+>1. 一开始没给输出赋值
+>2. for循环后没使用begin end
+>3. if 中的条件直接用括号括起来，就是求真，加上~就是0；
+>4. out 后面加的数要是 1‘b1；我写的是1，这个不会报错但是是warning
+
+
+
