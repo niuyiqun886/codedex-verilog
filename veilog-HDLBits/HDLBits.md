@@ -789,4 +789,69 @@ endmodule
 >4. out 后面加的数要是 1‘b1；我写的是1，这个不会报错但是是warning
 
 
+题目链接：[Adder100i](https://hdlbits.01xz.net/wiki/Adder100i)
+创建一个 100 位二进制行波进位加法器，方法是实例化 100 个全加器（您还需要编写全加器模块，可以考虑复用您之前向fadd提供的解决方案。）
 
+```verilog
+module add1 ( input a, input b, input cin, output sum, output cout );
+	assign sum = a ^ b ^ cin;
+	assign cout = a&b | a&cin | b&cin;
+endmodule
+
+module top_module( 
+    input [99:0] a, b,
+    input cin,
+    output [99:0] cout,
+    output [99:0] sum );
+
+    genvar i;         // 只能声明在 generate 外面或模块级
+    generate
+        for (i = 0; i< 100; i = i+1) begin : fa_loop      // 必须带命名标签
+            if (i == 0)
+                add1 u(a[0], b[0], cin, sum[0],cout[0]);
+            else
+                add1 u(a[i], b[i], cout[i-1], sum[i], cout[i]);
+        end
+    endgenerate
+endmodule
+
+```
+
+
+>[!error] 问题
+>1. 模块实例化不能放在always块里，always是描述行为的过程块，实例化是结构性的、静态的连接关系，必须写在模块顶层。
+>2. i++  verilog2001不支持，要写成 i = i+ 1。
+
+
+1. genvar ：专门给generate 循环用的生成期变量（generate-time variable） 
+	和integer的区别：
+	- `genvar` 只在**综合/编译阶段**存在。综合工具用它来展开循环、给实例编号，展开完之后它就消失了，电路里找不到任何对应的东西。
+	- `integer` 是**仿真运行期**的变量，在 always 块里参与计算，行为像软件里的变量。
+
+2. 循环
+	- 循环的起始值、结束条件、步进都必须是**常量表达式**，不能依赖任何信号的值。因为综合时必须能算出到底要生成多少份硬件。
+	- `begin : 标签名` 里的**标签不能省**。它是层次命名的基础——展开后 100 个实例分别叫 `fa_loop[0].u`、`fa_loop[1].u`……有了下标，实例名自然唯一。这正是你之前"实例名重复"报错的解法。
+	- 一个 genvar 可以被多个 generate 循环复用，但同一时刻只能用在一处。
+
+always和generate的区别
+
+这两者的根本差异是**描述的东西不同**：
+
+
+|        | always                | generate                    |
+| ------ | --------------------- | --------------------------- |
+| 描述什么   | 行为：在什么条件下，信号取什么值      | 结构：例化哪些模块、哪些线               |
+| 里面能放   | 过程赋值、if、case、for      | 模块实例化、assign、always块、wire声明 |
+| 循环变量   | integer               | genvar                      |
+| 循环含义   | 仿真时顺序执行N次(综合是展开成N份逻辑) | 编译时复制N份硬件                   |
+| 能否例化模块 | 不能                    | 能                           |
+
+**为什么 always 里不能例化模块：** 
+模块实例是一块物理存在的电路，从上电那一刻就一直在那里。而 always 块描述的是"事件发生时做什么"——它有时间维度，会被反复触发。把一个静态存在的东西塞进一个动态执行的过程里，语义上讲不通。这就是你最早那版代码的根本问题。
+
+**怎么选**
+
+- 要**例化模块**（尤其是要例化很多份）→ 只能用 generate
+- 要写**组合/时序逻辑的行为**（if、case、计数、状态机）→ 用 always
+- 要根据参数**条件性地生成不同结构**（比如 `if (WIDTH > 8) 用这种实现，否则用那种`）→ generate
+- 只是想批量写一堆位运算（比如那道 vector100r 反转）→ always 里的 for 更简单，因为不涉及模块实例化
